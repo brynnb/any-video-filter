@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+   
+  },
+  "devDependencies": {
+    "webpack": "^5.76.3",
+    "webpack-cli": "^5.0.1",
+    "webpack-target-webextension": "^1.0.4"
+  }
+}

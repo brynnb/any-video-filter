@@ -1,0 +1,20 @@
+{
+
+  "manifest_version": 2,
+  "name": "Any Video Filter",
+  "version": "1.2",
+
+  "description": "Filter any video website",
+
+  "icons": {
+    "48": "icons/bottle-tonic-plus-outline.png"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["assets/jquery-3.2.0.min.js","anyvideofilter.js"]
+    }
+  ]
+
+}
