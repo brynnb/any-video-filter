@@ -6,6 +6,7 @@ function debugLog(message) {
   }
 }
 
+//useful to make websites less distracting while debugging them
 function replaceImagesWithGreyBoxesForTesting() {
   // Select all image elements
   var images = document.getElementsByTagName("img");
@@ -29,6 +30,7 @@ if (debugMode) {
   hideEPAd();
 }
 
+//I need to see if ublock works/persists on developer instance of firefox/chrome
 function hideEPAd() {
   //hide the elemnt with class "ad300px"
   var ad300px = document.getElementsByClassName("ad300px");

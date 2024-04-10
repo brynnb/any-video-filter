@@ -1,5 +1,5 @@
 # any-video-filter
- The premise of this extension is to eventually filter any video website, though the reality is that it will likely only work and be tested on the major video platforms in the US. It will also have a few other nice-to-have features regarding video player options. I'm building this extension because many video websites will:
+ The goal of this extension is to provide better filtering and sorting options for any video website, though the reality is that it will likely only work and be tested on the major video platforms used in the US. It will also have a few other nice-to-have features fix annoying video player behavior. I'm building this extension because many video websites will:
 
  * Ignore user filtering for a given resolution (e.g. show 2k video when user selected 4k only)
  * Not sort by user selection, or does not provide basic sorting functionality
