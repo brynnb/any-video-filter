@@ -1,239 +1,325 @@
-console.log("Loading Any Video Filter");
+debugMode = true;
 
-$(document).ready(function () {
-  function checkIfExtensionEnabled() {
-    chrome.storage.local.get(["extensionEnabled"], function (result) {
-      if (result.extensionEnabled == false) {
-        window.stop();
-      }
-    });
+function debugLog(message) {
+  if (debugMode) {
+    console.log(message);
+  }
+}
+
+function replaceImagesWithGreyBoxesForTesting() {
+  // Select all image elements
+  var images = document.getElementsByTagName("img");
+
+  // Loop through all image elements
+  for (var i = 0; i < images.length; i++) {
+    // Change the source of the image to a 1x1 grey pixel
+    images[i].src =
+      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+    // Set the background color to grey
+    images[i].style.backgroundColor = "#808080";
+
+    // Preserve aspect ratio while ensuring the image covers the whole area
+    images[i].style.objectFit = "cover";
+  }
+}
+
+if (debugMode) {
+  replaceImagesWithGreyBoxesForTesting();
+  hideEPAd();
+}
+
+function hideEPAd() {
+  //hide the elemnt with class "ad300px"
+  var ad300px = document.getElementsByClassName("ad300px");
+  if (ad300px.length > 0) {
+    ad300px[0].style.display = "none";
   }
 
-  console.log("Document is ready");
-
-  var extensionEnabled = true;
-
-  if (!extensionEnabled) {
-    window.stop();
+  //hide element with "adnative-1x1" class
+  var adnative1x1 = document.getElementsByClassName("adnative-1x1");
+  if (adnative1x1.length > 0) {
+    adnative1x1[0].style.display = "none";
   }
+}
 
-  var currentCheckRunning; //to be set later and re-run as needed
+debugLog("Loading Any Video Filter");
 
-  //poll every half second to see if page height changed - if so it possibly means more content has loaded
-  //TODO: make this detect AJAX instead - current ajax detection attempts have failed
-  var currentPageHeight = 0;
+const videoResolutions = [
+  "144p",
+  "240p",
+  "360p",
+  "480p",
+  "720p",
+  "1080p",
+  "1440p",
+  "2160p",
+  "4320p",
+];
 
-  setInterval(function () {
-    var body = document.body;
-    var html = document.documentElement;
+selectedResolution = "2160p";
 
-    var newPageHeight = Math.max(
-      body.scrollHeight,
-      body.offsetHeight,
-      html.clientHeight,
-      html.scrollHeight,
-      html.offsetHeight
-    );
-
-    //console.log('checking height' + newPageHeight + '  ' + currentPageHeight);
-
-    if (newPageHeight != currentPageHeight && currentCheckRunning) {
-      currentCheckRunning(); //run whatever the current check is for current domain
-
-      currentPageHeight = newPageHeight;
+function findElementsWithText(text) {
+  let elements = [];
+  let walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    null,
+    false
+  );
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.textContent.includes(text)) {
+      elements.push(node.parentElement);
     }
-  }, 500);
+  }
+  debugLog(`Found ${elements.length} elements with text "${text}"`);
+  return elements;
+}
 
-  getDuolingoData();
-
-  // Function to be called when the progressBarValue changes
-  function onProgressBarValueChange(newValue) {
-    console.log("Progress bar value changed to:", newValue);
+function getDirectTextContent(parent, element) {
+  let directText = parent.outerHTML;
+  //   for (let child of parent.childNodes) {
+  //     if (child !== element) {
+  //       directText += child.outerHTML;
+  //     }
+  //   }
+  // remove the outerHTML text from directText
+  if (directText) {
+    directText = directText.replace(element.outerHTML, "");
+    // debugLog(`Direct text content of node: ${directText}`);
+  } else {
+    // debugLog('parent text is empty');
+    directText = "";
   }
 
-  // Select the element with the role 'progressbar'
-  var progressBar = document.querySelector('[role="progressbar"]');
+  return directText;
+}
 
-  // Initial setup to store the last known value of the CSS variable
-  let lastKnownValue = getComputedStyle(progressBar)
-    .getPropertyValue("--web-ui_internal_progress-bar-value")
-    .trim();
-
-  // Create an instance of MutationObserver
-  var observer = new MutationObserver(function (mutations) {
-
-	console.log('running mutation')
-    
-  });
-
-  // Start observing the progressBar element for attribute changes
-  observer.observe(progressBar, {
-    attributes: true, // This configures the observer to watch for changes to attributes of the progressBar
-  });
-
-  // Remember to disconnect the observer when it's no longer needed to avoid memory leaks
-  // observer.disconnect();
-
-  function getDuolingoData() {
-    //create json of each id and its content
-    var items = [];
-
-    $("tr.athing").each(function () {
-      var id = $(this).attr("id");
-      //assign child .commtext to variable
-      var content = $("tr#" + id + " .commtext").html();
-
-      //convert content to regular text without html tags
-      content = $("<div/>").html(content).text();
-
-      items.push({
-        id: id,
-        content: content,
-      });
-
-      // if(hasFilteredKeywordsInText(str)) {
-      // 	//change background color to red
-      // 	$(this).css('background-color', '#ff0000');
-      // }
-    });
-
-    //truncate items to first 10 for testing
-    items = items.slice(0, 10);
-
-    console.log(items);
+function includesForbiddenText(text) {
+  for (let resolution of videoResolutions) {
+    if (text.includes(resolution)) {
+      // debugLog('found forbidden text:')
+      // debugLog(resolution)
+      // debugLog('and')
+      // debugLog(text)
+      return true;
+    }
   }
+  return false;
+}
 
-  function youtubeCheck() {
-    //remove individual video listings that have filter matches
-    $("ytd-rich-item-renderer").each(function () {
-      var str = $(this).html();
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).hide();
-      }
-    });
-
-    //covid banner or other nagging stuff that never goes away on youtube
-    $("ytd-rich-section-renderer").each(function () {
-      var str = $(this).html();
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).hide();
-      }
-    });
-
-    //remove "featured" ad sections
-    $("ytd-rich-section-renderer").each(function () {
-      var str = $(this).html().toLowerCase();
-
-      if (
-        str.indexOf("ytd-compact-promoted-item-renderer") >= 0 ||
-        str.indexOf("ytd-primetime-promo-renderer") >= 0
-      ) {
-        $(this).hide();
-      }
-    });
-
-    //remove search results
-    $("ytd-video-renderer").each(function () {
-      var str = $(this).html();
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).hide();
-      }
-    });
-
-    //remove items from channel-specific grid-groups
-    $("ytd-grid-video-renderer").each(function () {
-      var str = $(this).html();
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).hide();
-      }
-    });
-
-    //remove sections in "best of youtube" category search results entirely if the title is offending
-    $("ytd-item-section-renderer").each(function () {
-      //look at just the title, not all the contents, otherwise something like the entire "Trending" list might get hidden
-      var str = $(this).find("#title").html();
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).hide();
-        console.log("grr13");
-      }
-    });
-  }
-
-  function imgurCheck() {}
-
-  function twitterCheck() {
-    console.log(
-      "count " +
-        $('div[aria-label^="Timeline: Your Home"]')
-          .first()
-          .children()
-          .children().length
+function findHighestParent(element) {
+  let currentElement = element;
+  while (currentElement.parentElement) {
+    let parentDirectText = getDirectTextContent(
+      currentElement.parentElement,
+      currentElement
     );
-
-    //filter from trending sidebar
-    $('div[aria-label^="Timeline: Trending now"]')
-      .first()
-      .children()
-      .children()
-      .each(function () {
-        if (hasFilteredKeywordsInText($(this).html())) {
-          $(this).hide();
-        }
-        //console.log($(this).html());
-      });
-
-    $('div[aria-label^="Timeline: Your Home"]')
-      .children()
-      .children()
-      .each(function () {
-        if (hasFilteredKeywordsInText($(this).html())) {
-          $(this).hide();
-        }
-      });
+    // debugLog("wee1");
+    // debugLog(parentDirectText);
+    if (includesForbiddenText(parentDirectText)) {
+      break;
+    }
+    currentElement = currentElement.parentElement;
   }
+  //   debugLog(`Found highest parent for element`);
+  return currentElement;
+}
 
-  function oldRedditCheck() {
-    //check for title keywords to block
-    $("a.title").each(function () {
-      var str = $(this).html().toUpperCase();
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).parents(".thing.link").first().hide();
-      }
-    });
-
-    //check for subreddits to block
-    $("a.subreddit").each(function () {
-      var str = $(this).html().toUpperCase().substring(2);
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).parents(".thing.link").first().hide();
-      }
-    });
+function getVisiblePixelArea(element) {
+  let style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden") {
+    return 0;
   }
+  let rect = element.getBoundingClientRect();
+  //round down height and width the nearest integer
+  rect.width = Math.floor(rect.width);
+  rect.height = Math.floor(rect.height);
 
-  function newRedditCheck() {
-    //new reddit check keywords to block
-    $("h3").each(function () {
-      var str = $(this).html();
+  return {
+    area: rect.width * rect.height,
+    width: rect.width,
+    height: rect.height,
+  };
+}
 
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).parents().eq(6).hide();
-      }
-    });
-
-    //new reddit check for subreddits to block
-    $('a[data-click-id="subreddit"]').each(function () {
-      var str = $(this).html().substring(2);
-
-      if (hasFilteredKeywordsInText(str)) {
-        $(this).parents().eq(5).hide();
-      }
-    });
+function getUniqueSelector(element) {
+  let path = [];
+  while (element) {
+    let selector = element.nodeName.toLowerCase();
+    if (element.id) {
+      selector += "#" + element.id;
+    } else if (element.className && typeof element.className === "string") {
+      selector += "." + element.className.split(" ").join(".");
+    }
+    path.unshift(selector);
+    element = element.parentNode;
   }
+  return path.join(" > ");
+}
+
+let likelyVideoElements = [];
+let elementsByResolution = [];
+videoResolutions.forEach((resolution) => {
+  elementsByResolution[resolution] = [];
+  let resolutionElements = findElementsWithText(resolution);
+  resolutionElements.forEach((element) => {
+    let parent = findHighestParent(element);
+    let pixelArea = getVisiblePixelArea(parent);
+    debugLog(
+      `Pixel area for parent of element with text "${resolution}": ${pixelArea.area}, width: ${pixelArea.width}, height: ${pixelArea.height}`
+    );
+    if (pixelArea.area > 22000) {
+      //if parent doesnt have id, assign a random one and inject it into the html
+      if (!parent.id) {
+        parent.id = `avf-${Math.random().toString(36).substring(7)}`;
+        debugLog(`Assigned ID to parent: ${parent.id}`);
+      }
+      //push ID of element to likelyVideoElements
+      likelyVideoElements.push(parent.id);
+    }
+  });
+
+  elementsByResolution[resolution] = likelyVideoElements;
 });
+
+console.log(elementsByResolution);
+
+// elements.sort(
+//   (a, b) => getVisiblePixelArea(b).area - getVisiblePixelArea(a).area
+// );
+
+// debugLog(`Final sorted elements: ${elements}`);
+
+// $(document).ready(function () {
+//   function checkIfExtensionEnabled() {
+//     chrome.storage.local.get(["extensionEnabled"], function (result) {
+//       if (result.extensionEnabled == false) {
+//         window.stop();
+//       }
+//     });
+//   }
+
+//   debugLog("Document is ready");
+
+//   var extensionEnabled = true;
+
+//   if (!extensionEnabled) {
+//     window.stop();
+//   }
+
+//   var currentCheckRunning; //to be set later and re-run as needed
+
+//   //poll every half second to see if page height changed - if so it possibly means more content has loaded
+//   //TODO: make this detect AJAX instead - current ajax detection attempts have failed
+//   var currentPageHeight = 0;
+
+//   setInterval(function () {
+//     var body = document.body;
+//     var html = document.documentElement;
+
+//     var newPageHeight = Math.max(
+//       body.scrollHeight,
+//       body.offsetHeight,
+//       html.clientHeight,
+//       html.scrollHeight,
+//       html.offsetHeight
+//     );
+
+//     //debugLog('checking height' + newPageHeight + '  ' + currentPageHeight);
+
+//     if (newPageHeight != currentPageHeight && currentCheckRunning) {
+//       currentCheckRunning(); //run whatever the current check is for current domain
+
+//       currentPageHeight = newPageHeight;
+//     }
+//   }, 500);
+
+//   // Function to be called when the progressBarValue changes
+//   function onProgressBarValueChange(newValue) {
+//     debugLog("Progress bar value changed to:", newValue);
+//   }
+
+//   // Select the element with the role 'progressbar'
+//   var progressBar = document.querySelector('[role="progressbar"]');
+
+//   // Initial setup to store the last known value of the CSS variable
+//   let lastKnownValue = getComputedStyle(progressBar)
+//     .getPropertyValue("--web-ui_internal_progress-bar-value")
+//     .trim();
+
+//   // Create an instance of MutationObserver
+//   var observer = new MutationObserver(function (mutations) {
+//     debugLog("running mutation");
+//   });
+
+//   // Start observing the progressBar element for attribute changes
+//   observer.observe(progressBar, {
+//     attributes: true, // This configures the observer to watch for changes to attributes of the progressBar
+//   });
+
+//   // Remember to disconnect the observer when it's no longer needed to avoid memory leaks
+//   // observer.disconnect();
+
+//   function youtubeCheck() {
+//     //remove individual video listings that have filter matches
+//     $("ytd-rich-item-renderer").each(function () {
+//       var str = $(this).html();
+
+//       if (hasFilteredKeywordsInText(str)) {
+//         $(this).hide();
+//       }
+//     });
+
+//     //covid banner or other nagging stuff that never goes away on youtube
+//     $("ytd-rich-section-renderer").each(function () {
+//       var str = $(this).html();
+
+//       if (hasFilteredKeywordsInText(str)) {
+//         $(this).hide();
+//       }
+//     });
+
+//     //remove "featured" ad sections
+//     $("ytd-rich-section-renderer").each(function () {
+//       var str = $(this).html().toLowerCase();
+
+//       if (
+//         str.indexOf("ytd-compact-promoted-item-renderer") >= 0 ||
+//         str.indexOf("ytd-primetime-promo-renderer") >= 0
+//       ) {
+//         $(this).hide();
+//       }
+//     });
+
+//     //remove search results
+//     $("ytd-video-renderer").each(function () {
+//       var str = $(this).html();
+
+//       if (hasFilteredKeywordsInText(str)) {
+//         $(this).hide();
+//       }
+//     });
+
+//     //remove items from channel-specific grid-groups
+//     $("ytd-grid-video-renderer").each(function () {
+//       var str = $(this).html();
+
+//       if (hasFilteredKeywordsInText(str)) {
+//         $(this).hide();
+//       }
+//     });
+
+//     //remove sections in "best of youtube" category search results entirely if the title is offending
+//     $("ytd-item-section-renderer").each(function () {
+//       //look at just the title, not all the contents, otherwise something like the entire "Trending" list might get hidden
+//       var str = $(this).find("#title").html();
+
+//       if (hasFilteredKeywordsInText(str)) {
+//         $(this).hide();
+//         debugLog("grr13");
+//       }
+//     });
+//   }
+// });

@@ -8,4 +8,3 @@ var html = fs.readFileSync('testdata/example.html', 'utf8');
 
 //call PageProcessor constructor with html
 new pageProcessor(html);
-
