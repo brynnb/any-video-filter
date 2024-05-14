@@ -1,5 +1,117 @@
 debugMode = true;
 
+if (debugMode) {
+  replaceImagesWithGreyBoxesForTesting();
+  hideEPAd();
+}
+
+debugLog("Loading Any Video Filter");
+
+const videoResolutions = [
+  "144p",
+  "240p",
+  "360p",
+  "480p",
+  "720p",
+  "1080p",
+  "1440p",
+  "2160p",
+  "4320p",
+];
+
+// selectedResolution = "2160p";
+
+// let likelyVideoElements = [];
+// let elementsByResolution = [];
+// videoResolutions.forEach((resolution) => {
+//   elementsByResolution[resolution] = [];
+//   let resolutionElements = findElementsWithText(resolution);
+//   resolutionElements.forEach((element) => {
+//     let parent = findHighestParent(element);
+//     let pixelArea = getVisiblePixelArea(parent);
+//     debugLog(
+//       `Pixel area for parent of element with text "${resolution}": ${pixelArea.area}, width: ${pixelArea.width}, height: ${pixelArea.height}`
+//     );
+//     if (pixelArea.area > 22000) {
+//       //if parent doesnt have id, assign a random one and inject it into the html
+//       if (!parent.id) {
+//         parent.id = `avf-${Math.random().toString(36).substring(7)}`;
+//         debugLog(`Assigned ID to parent: ${parent.id}`);
+//       }
+//       //push ID of element to likelyVideoElements
+//       likelyVideoElements.push(parent.id);
+//     }
+//   });
+
+//   elementsByResolution[resolution] = likelyVideoElements;
+// });
+
+// console.log(elementsByResolution);
+
+// Select all elements
+var elements = document.querySelectorAll("*");
+
+var timestampRegex = /\b\d{1,2}:\d{1,2}\b/; //e.g. 0:00 or 12:34
+
+
+// Filter elements to only those that contain a timestamp
+var timestampElements = Array.from(elements).filter((element) => {
+
+  // Check if the element's text content matches the regex
+  return timestampRegex.test(element.textContent);
+});
+
+// Now timestampElements contains all elements that contain a timestamp
+console.log(timestampElements);
+
+var likelyVideoElements = [];
+
+for (let element of timestampElements) {
+  let parent = findHighestParentWithoutASecondTimestamp(element);
+  let pixelArea = getVisiblePixelArea(parent);
+  debugLog(
+    `Pixel area for parent of element with text "${element.textContent}": ${pixelArea.area}, width: ${pixelArea.width}, height: ${pixelArea.height}`
+  );
+  if (pixelArea.area > 22000) {
+    //if parent doesnt have id, assign a random one and inject it into the html
+    if (!parent.id) {
+      parent.id = `avf-${Math.random().toString(36).substring(7)}`;
+      debugLog(`Assigned ID to parent: ${parent.id}`);
+    }
+    //push ID of element to likelyVideoElements
+    likelyVideoElements.push(parent.id);
+
+  }
+}
+
+function findHighestParentWithoutASecondTimestamp(element) {
+  let currentElement = element;
+  while (currentElement.parentElement) {
+    let parentDirectText = getDirectTextContent(
+      currentElement.parentElement,
+      currentElement
+    );
+
+    if (includesForbiddenText(parentDirectText)) {
+      break;
+    }
+    currentElement = currentElement.parentElement;
+  }
+  //   debugLog(`Found highest parent for element`);
+  return currentElement;
+}
+
+/* 
+// steps:
+1. find all elements with a time tag (0:00)
+2. traverse up in the DOM tree until you find a parent element that also contains a time tag
+3. go back down one more to find the video container
+4. measure the size of the container, tally up how much are of each size
+5. assume the size with the highest count is the video container
+6. apply filtering to these elemennts
+
+*/
+
 function debugLog(message) {
   if (debugMode) {
     console.log(message);
@@ -25,11 +137,6 @@ function replaceImagesWithGreyBoxesForTesting() {
   }
 }
 
-if (debugMode) {
-  replaceImagesWithGreyBoxesForTesting();
-  hideEPAd();
-}
-
 //I need to see if ublock works/persists on developer instance of firefox/chrome
 function hideEPAd() {
   //hide the elemnt with class "ad300px"
@@ -44,22 +151,6 @@ function hideEPAd() {
     adnative1x1[0].style.display = "none";
   }
 }
-
-debugLog("Loading Any Video Filter");
-
-const videoResolutions = [
-  "144p",
-  "240p",
-  "360p",
-  "480p",
-  "720p",
-  "1080p",
-  "1440p",
-  "2160p",
-  "4320p",
-];
-
-selectedResolution = "2160p";
 
 function findElementsWithText(text) {
   let elements = [];
@@ -160,33 +251,6 @@ function getUniqueSelector(element) {
   }
   return path.join(" > ");
 }
-
-let likelyVideoElements = [];
-let elementsByResolution = [];
-videoResolutions.forEach((resolution) => {
-  elementsByResolution[resolution] = [];
-  let resolutionElements = findElementsWithText(resolution);
-  resolutionElements.forEach((element) => {
-    let parent = findHighestParent(element);
-    let pixelArea = getVisiblePixelArea(parent);
-    debugLog(
-      `Pixel area for parent of element with text "${resolution}": ${pixelArea.area}, width: ${pixelArea.width}, height: ${pixelArea.height}`
-    );
-    if (pixelArea.area > 22000) {
-      //if parent doesnt have id, assign a random one and inject it into the html
-      if (!parent.id) {
-        parent.id = `avf-${Math.random().toString(36).substring(7)}`;
-        debugLog(`Assigned ID to parent: ${parent.id}`);
-      }
-      //push ID of element to likelyVideoElements
-      likelyVideoElements.push(parent.id);
-    }
-  });
-
-  elementsByResolution[resolution] = likelyVideoElements;
-});
-
-console.log(elementsByResolution);
 
 // elements.sort(
 //   (a, b) => getVisiblePixelArea(b).area - getVisiblePixelArea(a).area
